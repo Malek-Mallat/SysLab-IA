@@ -23,3 +23,6 @@ credentials*
 *.log
 *.dump
 *.backup
+
+# Donnees brutes NHANES (retelechargees par ml/train_model_nhanes.py)
+ml/nhanes_raw/

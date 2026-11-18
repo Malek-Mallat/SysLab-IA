@@ -218,9 +218,9 @@
 
                         <!-- Avant la prediction -->
                         <p class="text-muted mt-2 mb-0" invisible="risque_niveau">
-                            Aucune estimation pour le moment. Saisissez la glycemie, verifiez
-                            le poids, la taille et la date de naissance du patient, puis cliquez
-                            sur <strong>Predire le risque de diabete</strong>.
+                            Aucune estimation pour le moment. Saisissez la glycemie (et l'HbA1c si
+                            elle est demandee), verifiez le poids, la taille, la date de naissance et
+                            le sexe du patient, puis cliquez sur <strong>Predire le risque de diabete</strong>.
                         </p>
 
                         <!-- Apres la prediction : jauge + donnees utilisees (tracabilite) -->
@@ -228,11 +228,14 @@
                             <group>
                                 <field name="risque_diabete" widget="progressbar"/>
                                 <field name="risque_date"/>
+                                <field name="risque_modele"/>
                             </group>
                             <group string="Donnees envoyees au modele">
                                 <field name="risque_glucose"/>
+                                <field name="risque_hba1c" invisible="not risque_hba1c"/>
                                 <field name="risque_imc"/>
                                 <field name="risque_age"/>
+                                <field name="risque_sexe"/>
                             </group>
                         </group>
 
@@ -240,9 +243,9 @@
                         <div class="alert alert-warning small mb-0 mt-2" role="status">
                             <i class="fa fa-info-circle me-1" title="Information"/>
                             <strong>Resultat indicatif, a valider par un professionnel.</strong>
-                            Estimation statistique (Random Forest entraine sur le dataset public
-                            Pima Indians Diabetes, variables : glycemie, IMC, age ; exactitude
-                            d'environ 75 %). Ce n'est pas un diagnostic.
+                            Estimation statistique (Random Forest entraine sur NHANES 2017-2018,
+                            adultes americains de 20 ans et plus ; AUC d'environ 0,92, ou 0,95 avec
+                            l'HbA1c). Ce n'est pas un diagnostic.
                         </div>
                     </div>
 

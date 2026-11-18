@@ -36,7 +36,7 @@ Mini-projet académique (ERP), réalisé par **Malek Mallat**.
 | **Catalogue** | Analyses par famille (biochimie, hématologie), unités, plages de référence, tarifs |
 | **Demandes** | Référence automatique `DEM/ANNÉE/00001`, workflow *Brouillon → En cours → Validé → Facturé*, verrouillage après validation |
 | **Résultats** | Saisie des valeurs, **interprétation automatique** (Normal / Bas / Élevé) et commentaire |
-| **IA** | **Estimation du risque de diabète** (Random Forest) à partir de la glycémie, de l'IMC et de l'âge |
+| **IA** | **Estimation du risque de diabète** (Random Forest entraîné sur NHANES) à partir de la glycémie, de l'IMC, de l'âge, du sexe et, si elle est demandée, de l'HbA1c |
 | **Bulletin PDF** | Bulletin de résultats imprimable, avec le bloc IA et les mentions éthiques |
 | **Facturation** | Création de la facture client (module natif `account`) depuis une demande validée |
 | **Pilotage** | Tableau de bord (KPI), vues Kanban, graphiques et pivots, filtres et regroupements |
@@ -56,9 +56,9 @@ Mini-projet académique (ERP), réalisé par **Malek Mallat**.
                                          ▼
                 ┌───────────────────────────────────────────────────────────┐
   Bouton        │  COUCHE 2 — Machine Learning (models/demande_ml.py)       │
-  « Prédire » ► │  Combine plusieurs données : [Glycémie, IMC, Âge]         │
+  « Prédire » ► │  Combine : [Glycémie, (HbA1c), IMC, Âge, Sexe]            │
                 │  → probabilité de diabète (%) + niveau faible/modéré/élevé│
-                │  Modèle Random Forest entraîné hors Odoo (ml/)            │
+                │  Random Forest entraîné hors Odoo sur NHANES (ml/)        │
                 └───────────────────────────────────────────────────────────┘
                                          │
                                          ▼
@@ -67,7 +67,9 @@ Mini-projet académique (ERP), réalisé par **Malek Mallat**.
 
 * **Couche 1** : elle se déclenche en temps réel, dès la saisie, grâce à un champ calculé et stocké.
 * **Couche 2** : elle se déclenche à la demande, avec un bouton visible seulement si la demande contient une glycémie (code `GLY`).
-  * La glycémie saisie en **g/L** est convertie en **mg/dL** (× 100), l'unité du dataset.
+  * La glycémie saisie en **g/L** est convertie en **mg/dL** (× 100), l'unité du dataset. Les valeurs non plausibles (erreur d'unité) sont refusées.
+  * Si la demande contient une **HbA1c** (code `HBA1C`), le modèle « HbA1c » est utilisé ; sinon, le modèle « base ».
+  * Le modèle est réservé aux **adultes de 20 ans et plus** (population d'entraînement) : pour un patient plus jeune, la prédiction est refusée avec un message clair.
   * Le modèle renvoie `predict_proba`. Le niveau est **faible** sous 30 %, **modéré** de 30 à 60 %, **élevé** au-delà de 60 %.
   * Les données envoyées au modèle sont **enregistrées** (traçabilité).
   * L'estimation est **effacée automatiquement** si les résultats ou le patient changent.
@@ -107,9 +109,12 @@ syslab/
 ├── data/                   # séquence DEM/ANNÉE/xxxxx + 5 analyses pré-chargées
 ├── security/ir.model.access.csv
 └── ml/
-    ├── train_model.py      # entraînement (hors Odoo)
-    ├── diabetes.csv        # dataset Pima Indians Diabetes
-    └── diabetes_model.pkl  # modèle entraîné (joblib)
+    ├── train_model_nhanes.py       # entraînement du modèle utilisé par Odoo
+    ├── nhanes_diabetes.csv         # jeu NHANES nettoyé (2314 adultes)
+    ├── diabetes_model_nhanes.pkl   # modèles entraînés (joblib), lus par Odoo
+    ├── train_model.py              # ancien modèle Pima (gardé pour comparaison)
+    ├── diabetes.csv                # dataset Pima Indians Diabetes
+    └── diabetes_model.pkl          # ancien modèle Pima
 ```
 
 ---
@@ -190,27 +195,57 @@ En cas d'échec, le motif est visible dans *Paramètres → Technique → Email 
 
 ## 🤖 Couche ML : entraînement du modèle
 
-* **Dataset** : *Pima Indians Diabetes* (768 patientes, National Institute of Diabetes and Digestive and Kidney Diseases), fourni dans `ml/diabetes.csv`.
-* **Variables** : uniquement les 3 données que SysLab collecte, **Glucose (mg/dL), BMI, Age**.
-* **Pré-traitement** : dans ce dataset, un 0 en glucose ou en IMC signifie une valeur manquante. Ces 0 sont remplacés par la médiane.
-* **Modèle** : `RandomForestClassifier(n_estimators=200, max_depth=6)`, découpage 80/20 stratifié.
-* **Performance** : **accuracy ≈ 75 %** sur le jeu de test.
+### Dataset : NHANES 2017-2018
+* **Source** : *National Health and Nutrition Examination Survey* (CDC, États-Unis), données publiques.
+  Le script télécharge 5 fichiers (démographie, glycémie à jeun, HbA1c, mesures corporelles,
+  questionnaire diabète) et les joint par identifiant patient.
+* **Population** : **2314 adultes de 20 ans et plus**, hommes (48 %) et femmes, dont la glycémie à jeun
+  a été mesurée ; 17,4 % sont diabétiques.
+* **Étiquette** : « un médecin vous a-t-il déjà dit que vous étiez diabétique ? » (`DIQ010`, oui / non).
+  Les réponses « limite », « refus » et « ne sait pas » sont exclues.
+  > ⚠️ **Pas de fuite de l'étiquette.** On n'utilise volontairement pas « glycémie ≥ 126 mg/dL ou
+  > HbA1c ≥ 6,5 % » comme étiquette : ces valeurs sont aussi des variables d'entrée, et le modèle
+  > apprendrait simplement le seuil.
+
+### Deux modèles
+| Modèle | Variables | Utilisé quand |
+|---|---|---|
+| `base` | Glycémie (mg/dL), IMC, âge, sexe | toujours |
+| `hba1c` | Glycémie, **HbA1c (%)**, IMC, âge, sexe | la demande contient une HbA1c |
+
+Pour chacun, le script compare une **régression logistique** et un **Random Forest** (validation
+croisée 5 plis, AUC) et garde le meilleur (Random Forest dans les deux cas). Il évalue ensuite le
+modèle sur un jeu de test de 20 %, puis le ré-entraîne sur toutes les données.
+
+### Résultats (jeu de test)
+| Modèle | AUC | Sensibilité* | Spécificité* | Brier** |
+|---|---|---|---|---|
+| `base` (glycémie, IMC, âge, sexe) | **0,92** | 70 % | 91 % | 0,076 |
+| `hba1c` (+ HbA1c) | **0,95** | 80 % | 93 % | 0,059 |
+| *Ancien modèle Pima, appliqué aux mêmes patients NHANES* | 0,83 | 83 % | 64 % | 0,120 |
+
+\* au seuil de 30 % (« modéré » ou « élevé ») : part des diabétiques détectés / des non-diabétiques classés « faible ».
+\** score de Brier : erreur moyenne des probabilités (plus il est bas, plus un « 70 % » veut vraiment dire 70 %).
+
+L'accuracy n'est pas utilisée comme indicateur principal : avec 17 % de diabétiques, un modèle
+qui répondrait toujours « non » obtiendrait déjà 83 %. L'ancien modèle Pima se transpose mal :
+il génère beaucoup de fausses alertes (spécificité de 64 %).
 
 ```bash
 cd ml
 pip install pandas scikit-learn==1.8.0 joblib
-python train_model.py
+python train_model_nhanes.py
 ```
-Le script affiche l'accuracy et le rapport de classification. Il enregistre ensuite
-`diabetes_model.pkl` au format `{"model": <RandomForest>, "features": ["Glucose", "BMI", "Age"]}`.
-Odoo vérifie cet ordre des variables au chargement du modèle.
+Le script enregistre `nhanes_diabetes.csv` et `diabetes_model_nhanes.pkl`. Les fichiers bruts
+téléchargés (`ml/nhanes_raw/`) ne sont pas versionnés. Odoo vérifie au chargement que les
+variables demandées par chaque modèle sont bien fournies par SysLab.
 
 ---
 
 ## 🚀 Utilisation
 
-1. **Configuration → Catalogue d'analyses** : vérifier les plages de référence. 5 analyses sont pré-chargées : GLY, CHOL, TRIG, CREA, HB.
-2. **Patients** : créer la fiche. La date de naissance, le poids et la taille sont nécessaires à l'IA.
+1. **Configuration → Catalogue d'analyses** : vérifier les plages de référence. 6 analyses sont pré-chargées : GLY, CHOL, TRIG, CREA, HB et HBA1C (utilisée par l'IA).
+2. **Patients** : créer la fiche. La date de naissance, le sexe, le poids et la taille sont nécessaires à l'IA.
 3. **Demandes → Nouveau** : choisir le patient et le médecin, ajouter les analyses, puis **Démarrer**.
 4. Saisir les valeurs : l'interprétation (couche 1) s'affiche aussitôt.
 5. **Prédire le risque de diabète** (couche 2) : une jauge et un badge coloré apparaissent, avec la mention éthique.
@@ -244,10 +279,14 @@ Odoo vérifie cet ordre des variables au chargement du modèle.
 
 * **Aide à la décision, pas de diagnostic.** Chaque estimation porte la mention
   *« Résultat indicatif, à valider par un professionnel »*, à l'écran comme sur le bulletin PDF.
-* **Transparence** : le type de modèle, le dataset, les variables et l'exactitude (≈ 75 %) sont affichés. Les valeurs envoyées au modèle sont conservées.
+* **Transparence** : le modèle, le dataset, les variables et l'AUC sont affichés. Les valeurs envoyées au modèle sont conservées.
 * **Limites connues** :
-  * le dataset Pima ne contient que des **femmes d'origine Pima, âgées de 21 ans et plus**. Le modèle se généralise donc mal aux autres populations, aux hommes et aux enfants ;
-  * 3 variables seulement : il manque notamment l'HbA1c, les antécédents familiaux et la pression artérielle ;
+  * population **américaine** (NHANES) : elle couvre hommes et femmes de 20 ans et plus, mais elle n'est pas tunisienne. Un usage réel exigerait une validation sur des données locales ;
+  * **pas d'enfants** : la prédiction est refusée avant 20 ans ;
+  * l'étiquette est le diabète **déjà diagnostiqué** : environ 100 personnes du jeu ont une glycémie élevée sans diagnostic et comptent comme « non diabétiques ». De plus, les diabétiques traités ont souvent une glycémie abaissée ;
+  * données **transversales** : le modèle estime la probabilité d'un diabète actuel, pas le risque d'en développer un dans les années à venir ;
+  * les poids de sondage de NHANES ne sont pas utilisés : les proportions ne représentent pas exactement la population américaine ;
+  * il manque encore les antécédents familiaux et la pression artérielle, que SysLab ne collecte pas ;
   * une seule glycémie à jeun ne suffit pas à poser un diagnostic de diabète.
 * Les données de santé sont sensibles. Un déploiement réel exigerait des droits d'accès par rôle, une traçabilité complète et la conformité réglementaire (RGPD, hébergement de données de santé).
 
