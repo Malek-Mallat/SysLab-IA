@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Editeurs / systeme
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Fichiers sensibles : ne JAMAIS versionner d'identifiants (SMTP, base de donnees...)
+.env
+*.env
+*.conf
+*.cfg
+secrets*
+credentials*
+*.key
+*.pem
+*.p12
+
+# Journaux et sauvegardes
+*.log
+*.dump
+*.backup

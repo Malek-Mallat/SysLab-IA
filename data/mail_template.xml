@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Modele d'email : envoi du bulletin de resultats au biologiste.
+         noupdate="1" : vos retouches faites dans l'interface ne sont pas ecrasees par -u. -->
+    <data noupdate="1">
+        <record id="mail_template_bulletin" model="mail.template">
+            <field name="name">SysLab : Bulletin de resultats</field>
+            <field name="model_id" ref="model_syslab_demande"/>
+            <field name="subject">Bulletin de resultats {{ object.name }} - {{ object.patient_id.name }}</field>
+            <field name="email_from">{{ (object.env.company.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email_biologiste }}</field>
+            <!-- Le PDF du bulletin est genere et joint automatiquement -->
+            <field name="report_template_ids" eval="[(4, ref('syslab.action_report_bulletin'))]"/>
+            <field name="body_html" type="html">
+<div style="font-family: Arial, sans-serif; font-size: 13px; color: #2c3e50;">
+    <p>Bonjour,</p>
+    <p>
+        Veuillez trouver ci-joint le bulletin de resultats
+        <strong t-out="object.name or ''"/> du patient
+        <strong t-out="object.patient_id.name or ''"/>,
+        prescrit par <t t-out="object.medecin_id.name or '-'"/>.
+    </p>
+    <p>Merci de le verifier et de le valider avant sa remise au patient.</p>
+    <p style="color: #7f8c8d; font-size: 11px;">
+        Les commentaires automatiques et l'estimation du risque (IA) sont une aide a
+        l'interpretation : ils ne constituent pas un diagnostic.
+    </p>
+    <p>Cordialement,<br/><t t-out="user.name or ''"/><br/><t t-out="object.env.company.name or ''"/></p>
+</div>
+            </field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

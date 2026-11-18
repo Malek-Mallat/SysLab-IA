@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menu racine -->
+    <menuitem id="menu_syslab_root"
+              name="SysLab"
+              sequence="10"
+              web_icon="syslab,static/description/icon.png"/>
+
+    <!-- Tableau de bord : premiere entree, donc page d'accueil de l'application -->
+    <menuitem id="menu_syslab_dashboard"
+              name="Tableau de bord"
+              parent="menu_syslab_root"
+              action="action_syslab_dashboard"
+              sequence="0"/>
+
+    <!-- Operationnel -->
+    <menuitem id="menu_syslab_demandes"
+              name="Demandes"
+              parent="menu_syslab_root"
+              action="action_demande"
+              sequence="1"/>
+
+    <menuitem id="menu_syslab_patients"
+              name="Patients"
+              parent="menu_syslab_root"
+              action="action_patient"
+              sequence="2"/>
+
+    <menuitem id="menu_syslab_medecins"
+              name="Medecins"
+              parent="menu_syslab_root"
+              action="action_medecin"
+              sequence="3"/>
+
+    <!-- Configuration -->
+    <menuitem id="menu_syslab_config"
+              name="Configuration"
+              parent="menu_syslab_root"
+              sequence="90"/>
+
+    <menuitem id="menu_syslab_analyses"
+              name="Catalogue d'analyses"
+              parent="menu_syslab_config"
+              action="action_analyse"
+              sequence="1"/>
+
+    <!-- Coordonnees du laboratoire (societe principale) + email du biologiste -->
+    <menuitem id="menu_syslab_laboratoire"
+              name="Laboratoire"
+              parent="menu_syslab_config"
+              action="action_syslab_laboratoire"
+              sequence="2"/>
+
+</odoo>

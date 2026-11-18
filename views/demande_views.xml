@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree -->
+    <record id="view_demande_tree" model="ir.ui.view">
+        <field name="name">syslab.demande.tree</field>
+        <field name="model">syslab.demande</field>
+        <field name="arch" type="xml">
+            <!-- Ligne en gris quand la demande est cloturee (facturee) -->
+            <tree string="Demandes d'analyses" decoration-muted="state == 'facture'">
+                <field name="name" decoration-bf="1"/>
+                <field name="patient_id"/>
+                <field name="medecin_id"/>
+                <field name="date_demande"/>
+                <field name="nb_analyses" string="Analyses"/>
+                <!-- Nombre d'anomalies en rouge s'il y en a -->
+                <field name="nb_anomalies" string="Anomalies"
+                       decoration-danger="nb_anomalies &gt; 0" decoration-bf="nb_anomalies &gt; 0"/>
+                <field name="prix_total" sum="Total"/>
+                <!-- Colonne IA (masquable via le menu des colonnes) -->
+                <field name="risque_niveau" string="Risque IA" widget="badge" optional="show"
+                       decoration-success="risque_niveau == 'faible'"
+                       decoration-warning="risque_niveau == 'modere'"
+                       decoration-danger="risque_niveau == 'eleve'"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'brouillon'"
+                       decoration-warning="state == 'en_cours'"
+                       decoration-success="state == 'valide'"
+                       decoration-muted="state == 'facture'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Kanban : suivi du flux du laboratoire, une colonne par statut -->
+    <record id="view_demande_kanban" model="ir.ui.view">
+        <field name="name">syslab.demande.kanban</field>
+        <field name="model">syslab.demande</field>
+        <field name="arch" type="xml">
+            <!-- records_draggable="0" : on change de statut via les boutons du formulaire,
+                 pour respecter le workflow (ex. pas de "Facturee" sans facture) -->
+            <kanban default_group_by="state" class="o_kanban_small_column"
+                    records_draggable="0" group_create="0" group_delete="0"
+                    group_edit="0" quick_create="0" sample="1">
+                <field name="state"/>
+                <field name="nb_anomalies"/>
+                <field name="etat_resultats"/>
+                <!-- Barre en tete de colonne : repartition des resultats + total TND -->
+                <progressbar field="etat_resultats" sum_field="prix_total"
+                             colors='{"normal": "success", "anomalie": "danger", "vide": "200"}'/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <!-- En-tete : reference + badge de statut -->
+                            <div class="o_kanban_record_top mb-1">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                </div>
+                                <field name="state" widget="label_selection"
+                                       options="{'classes': {'brouillon': 'default', 'en_cours': 'warning', 'valide': 'success', 'facture': 'info'}}"/>
+                            </div>
+                            <!-- Corps : patient et medecin -->
+                            <div class="o_kanban_record_body">
+                                <div class="fw-bold">
+                                    <i class="fa fa-user me-1" title="Patient"/>
+                                    <field name="patient_id"/>
+                                </div>
+                                <div class="text-muted" t-if="record.medecin_id.raw_value">
+                                    <i class="fa fa-user-md me-1" title="Medecin prescripteur"/>
+                                    <field name="medecin_id"/>
+                                </div>
+                            </div>
+                            <!-- Pied : date a gauche, compteurs a droite -->
+                            <div class="o_kanban_record_bottom mt-2">
+                                <div class="oe_kanban_bottom_left text-muted">
+                                    <i class="fa fa-calendar me-1" title="Date de la demande"/>
+                                    <field name="date_demande"/>
+                                </div>
+                                <div class="oe_kanban_bottom_right">
+                                    <span class="badge rounded-pill text-bg-light me-1"
+                                          title="Nombre d'analyses">
+                                        <i class="fa fa-flask me-1"/><field name="nb_analyses"/>
+                                    </span>
+                                    <span class="badge rounded-pill text-bg-danger"
+                                          t-if="record.nb_anomalies.raw_value"
+                                          title="Resultats hors normes">
+                                        <i class="fa fa-exclamation-triangle me-1"/><field name="nb_anomalies"/>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Graph : evolution des demandes par mois, empilees par statut -->
+    <record id="view_demande_graph" model="ir.ui.view">
+        <field name="name">syslab.demande.graph</field>
+        <field name="model">syslab.demande</field>
+        <field name="arch" type="xml">
+            <graph string="Evolution des demandes" type="bar" stacked="1" sample="1">
+                <field name="date_demande" interval="month"/>
+                <field name="state"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot : demandes par medecin et par statut (nombre + chiffre d'affaires) -->
+    <record id="view_demande_pivot" model="ir.ui.view">
+        <field name="name">syslab.demande.pivot</field>
+        <field name="model">syslab.demande</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des demandes" sample="1">
+                <field name="medecin_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="prix_total" type="measure"/>
+                <field name="nb_anomalies" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_demande_form" model="ir.ui.view">
+        <field name="name">syslab.demande.form</field>
+        <field name="model">syslab.demande</field>
+        <field name="arch" type="xml">
+            <form string="Demande d'analyses">
+                <header>
+                    <button name="action_en_cours" type="object" string="Demarrer"
+                            class="btn-primary" invisible="state != 'brouillon'"/>
+                    <button name="action_valider" type="object" string="Valider"
+                            class="btn-primary" invisible="state != 'en_cours'"/>
+                    <!-- Couche 2 (ML) : visible seulement si la demande contient une glycemie -->
+                    <button name="action_predire_risque" type="object"
+                            string="Predire le risque de diabete" icon="fa-heartbeat"
+                            class="btn-secondary" invisible="not has_glycemie"/>
+                    <field name="has_glycemie" invisible="1"/>
+                    <!-- Facturation : uniquement une fois les resultats valides -->
+                    <button name="action_creer_facture" type="object" string="Creer la facture"
+                            class="btn-primary" icon="fa-file-text-o"
+                            invisible="has_facture or state != 'valide'"/>
+                    <!-- Bulletin PDF (rapport existant), proposé une fois valide -->
+                    <button name="%(action_report_bulletin)d" type="action" string="Imprimer le bulletin"
+                            icon="fa-print" invisible="state not in ('valide', 'facture')"/>
+                    <!-- Envoi du bulletin PDF par email au biologiste (compositeur Odoo) -->
+                    <button name="action_envoyer_bulletin" type="object" string="Envoyer le bulletin par email"
+                            icon="fa-envelope" invisible="state not in ('valide', 'facture')"/>
+                    <!-- Pas de retour en brouillon une fois facturee (coherence avec la facture) -->
+                    <button name="action_brouillon" type="object" string="Retour brouillon"
+                            invisible="state in ('brouillon', 'facture')"/>
+                    <field name="has_facture" invisible="1"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="brouillon,en_cours,valide,facture"/>
+                </header>
+                <sheet>
+                    <!-- Smart button : acces direct a la facture -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_voir_facture" type="object" class="oe_stat_button"
+                                icon="fa-pencil-square-o" invisible="not has_facture">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Facture</span>
+                                <span class="o_stat_value"><field name="facture_id" readonly="1"
+                                      options="{'no_open': True}"/></span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Rubans d'etat (coin superieur droit) -->
+                    <widget name="web_ribbon" title="Facturee" bg_color="text-bg-success"
+                            invisible="state != 'facture'"/>
+                    <widget name="web_ribbon" title="Validee" bg_color="text-bg-info"
+                            invisible="state != 'valide'"/>
+
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+
+                    <!-- Bandeau d'alerte si des resultats sortent des normes -->
+                    <div class="alert alert-warning d-flex align-items-center" role="alert"
+                         invisible="nb_anomalies == 0">
+                        <i class="fa fa-exclamation-triangle me-2" title="Attention"/>
+                        <span>
+                            <field name="nb_anomalies" class="fw-bold" readonly="1"/>
+                            resultat(s) hors des valeurs de reference - a verifier par le biologiste.
+                        </span>
+                    </div>
+
+                    <group>
+                        <group string="Patient &amp; Prescripteur">
+                            <!-- Verrouille une fois la demande validee -->
+                            <field name="patient_id" readonly="state in ('valide', 'facture')"
+                                   options="{'no_create': True}"/>
+                            <field name="medecin_id" readonly="state in ('valide', 'facture')"/>
+                        </group>
+                        <group string="Informations">
+                            <field name="date_demande" readonly="state in ('valide', 'facture')"/>
+                            <field name="nb_analyses"/>
+                            <field name="prix_total" class="fw-bold"/>
+                        </group>
+                    </group>
+
+                    <!-- ===== COUCHE 2 : aide a la decision par IA (risque de diabete) ===== -->
+                    <div class="border rounded p-3 mb-3 bg-light" invisible="not has_glycemie">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h5 class="mb-0">
+                                <i class="fa fa-heartbeat me-2 text-danger" title="IA"/>
+                                Aide a la decision - risque de diabete (IA)
+                            </h5>
+                            <field name="risque_niveau" widget="badge" invisible="not risque_niveau"
+                                   decoration-success="risque_niveau == 'faible'"
+                                   decoration-warning="risque_niveau == 'modere'"
+                                   decoration-danger="risque_niveau == 'eleve'"/>
+                        </div>
+
+                        <!-- Avant la prediction -->
+                        <p class="text-muted mt-2 mb-0" invisible="risque_niveau">
+                            Aucune estimation pour le moment. Saisissez la glycemie, verifiez
+                            le poids, la taille et la date de naissance du patient, puis cliquez
+                            sur <strong>Predire le risque de diabete</strong>.
+                        </p>
+
+                        <!-- Apres la prediction : jauge + donnees utilisees (tracabilite) -->
+                        <group invisible="not risque_niveau" class="mt-2 mb-0">
+                            <group>
+                                <field name="risque_diabete" widget="progressbar"/>
+                                <field name="risque_date"/>
+                            </group>
+                            <group string="Donnees envoyees au modele">
+                                <field name="risque_glucose"/>
+                                <field name="risque_imc"/>
+                                <field name="risque_age"/>
+                            </group>
+                        </group>
+
+                        <!-- Mention ethique (toujours visible) -->
+                        <div class="alert alert-warning small mb-0 mt-2" role="status">
+                            <i class="fa fa-info-circle me-1" title="Information"/>
+                            <strong>Resultat indicatif, a valider par un professionnel.</strong>
+                            Estimation statistique (Random Forest entraine sur le dataset public
+                            Pima Indians Diabetes, variables : glycemie, IMC, age ; exactitude
+                            d'environ 75 %). Ce n'est pas un diagnostic.
+                        </div>
+                    </div>
+
+                    <notebook>
+                        <page string="Analyses &amp; Resultats" name="resultats">
+                            <field name="resultat_ids" readonly="state in ('valide', 'facture')">
+                                <!-- Couleur de la ligne selon l'interpretation (couche 1) -->
+                                <tree editable="bottom"
+                                      decoration-danger="interpretation == 'eleve'"
+                                      decoration-warning="interpretation == 'bas'">
+                                    <field name="analyse_id" options="{'no_create': True}"/>
+                                    <field name="valeur" decoration-bf="interpretation in ('bas', 'eleve')"/>
+                                    <field name="unite" readonly="1"/>
+                                    <field name="borne_min" string="Min" readonly="1"/>
+                                    <field name="borne_max" string="Max" readonly="1"/>
+                                    <field name="interpretation" widget="badge"
+                                           decoration-success="interpretation == 'normal'"
+                                           decoration-danger="interpretation == 'eleve'"
+                                           decoration-warning="interpretation == 'bas'"
+                                           decoration-muted="interpretation == 'nd'"/>
+                                    <field name="commentaire" readonly="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Observations..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <!-- Historique : emails envoyes (bulletins) -->
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="view_demande_search" model="ir.ui.view">
+        <field name="name">syslab.demande.search</field>
+        <field name="model">syslab.demande</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une demande">
+                <!-- Champs de recherche (saisie libre dans la barre) -->
+                <field name="name" string="Reference"/>
+                <field name="patient_id"/>
+                <field name="medecin_id"/>
+                <field name="resultat_ids" string="Analyse"
+                       filter_domain="[('resultat_ids.analyse_id', 'ilike', self)]"/>
+
+                <!-- Filtres par statut (dans le meme bloc = combines en OU) -->
+                <filter name="brouillon" string="Brouillon" domain="[('state', '=', 'brouillon')]"/>
+                <filter name="en_cours" string="En cours" domain="[('state', '=', 'en_cours')]"/>
+                <filter name="valide" string="Valide" domain="[('state', '=', 'valide')]"/>
+                <filter name="facture" string="Facturee" domain="[('state', '=', 'facture')]"/>
+                <separator/>
+                <!-- Filtres metier -->
+                <filter name="a_facturer" string="A facturer"
+                        domain="[('state', '=', 'valide'), ('facture_id', '=', False)]"/>
+                <filter name="anormaux" string="Avec resultats anormaux"
+                        domain="[('resultat_ids.interpretation', 'in', ('bas', 'eleve'))]"/>
+                <filter name="sans_medecin" string="Sans medecin prescripteur"
+                        domain="[('medecin_id', '=', False)]"/>
+                <separator/>
+                <!-- Couche 2 (IA) -->
+                <filter name="risque_eleve" string="Risque diabete eleve (IA)"
+                        domain="[('risque_niveau', '=', 'eleve')]"/>
+                <filter name="risque_estime" string="Risque estime"
+                        domain="[('risque_niveau', '!=', False)]"/>
+                <separator/>
+                <!-- Filtre de periode natif Odoo 17 (mois, trimestre, annee...) -->
+                <filter name="filter_date_demande" string="Date de la demande" date="date_demande"/>
+
+                <group expand="0" string="Grouper par">
+                    <filter name="group_state" string="Statut" context="{'group_by': 'state'}"/>
+                    <filter name="group_patient" string="Patient" context="{'group_by': 'patient_id'}"/>
+                    <filter name="group_medecin" string="Medecin" context="{'group_by': 'medecin_id'}"/>
+                    <filter name="group_mois" string="Mois" context="{'group_by': 'date_demande:month'}"/>
+                    <filter name="group_annee" string="Annee" context="{'group_by': 'date_demande:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_demande" model="ir.actions.act_window">
+        <field name="name">Demandes d'analyses</field>
+        <field name="res_model">syslab.demande</field>
+        <!-- Kanban en vue par defaut ; la liste reste accessible via le selecteur de vues -->
+        <field name="view_mode">kanban,tree,form,graph,pivot</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Creez votre premiere demande d'analyses</p>
+            <p>Enregistrez un patient, selectionnez les analyses, saisissez les resultats : l'interpretation se fait automatiquement.</p>
+        </field>
+    </record>
+
+
+</odoo>

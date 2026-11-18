@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree -->
+    <record id="view_patient_tree" model="ir.ui.view">
+        <field name="name">syslab.patient.tree</field>
+        <field name="model">syslab.patient</field>
+        <field name="arch" type="xml">
+            <tree string="Patients">
+                <field name="name"/>
+                <field name="sexe"/>
+                <field name="age"/>
+                <field name="telephone"/>
+                <field name="imc"/>
+                <!-- Corpulence en badge colore (seuils OMS) -->
+                <field name="imc_categorie" widget="badge"
+                       decoration-success="imc_categorie == 'normal'"
+                       decoration-warning="imc_categorie in ('maigreur', 'surpoids')"
+                       decoration-danger="imc_categorie == 'obesite'"
+                       decoration-muted="imc_categorie == 'nd'"/>
+                <field name="demande_count" string="Demandes"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_patient_form" model="ir.ui.view">
+        <field name="name">syslab.patient.form</field>
+        <field name="model">syslab.patient</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <!-- Smart button : nombre de demandes du patient, ouvre la liste filtree -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_voir_demandes" type="object"
+                                class="oe_stat_button" icon="fa-flask">
+                            <field name="demande_count" widget="statinfo" string="Demandes"/>
+                        </button>
+                    </div>
+
+                    <!-- Bandeau d'information : donnees necessaires a la prediction IA -->
+                    <div class="alert alert-info d-flex align-items-center" role="status"
+                         invisible="date_naissance and poids and taille">
+                        <i class="fa fa-info-circle me-2" title="Information"/>
+                        <span>Renseignez la date de naissance, le poids et la taille :
+                            ils sont necessaires a l'estimation du risque par le module IA.</span>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Nom et prenom du patient"/></h1>
+                    </div>
+                    <group>
+                        <group string="Identite">
+                            <field name="sexe"/>
+                            <field name="date_naissance"/>
+                            <field name="age"/>
+                        </group>
+                        <group string="Coordonnees">
+                            <field name="telephone"/>
+                            <field name="email"/>
+                        </group>
+                    </group>
+                    <group string="Mensurations (utilisees par le modele IA)">
+                        <group>
+                            <field name="poids"/>
+                            <field name="taille"/>
+                        </group>
+                        <group>
+                            <field name="imc"/>
+                            <!-- Vert = normal, orange = maigreur/surpoids, rouge = obesite -->
+                            <field name="imc_categorie" widget="badge"
+                                   decoration-success="imc_categorie == 'normal'"
+                                   decoration-warning="imc_categorie in ('maigreur', 'surpoids')"
+                                   decoration-danger="imc_categorie == 'obesite'"
+                                   decoration-muted="imc_categorie == 'nd'"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="view_patient_search" model="ir.ui.view">
+        <field name="name">syslab.patient.search</field>
+        <field name="model">syslab.patient</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher un patient">
+                <!-- Champs de recherche -->
+                <field name="name"/>
+                <field name="telephone"/>
+                <field name="email"/>
+
+                <!-- Sexe -->
+                <filter name="hommes" string="Hommes" domain="[('sexe', '=', 'M')]"/>
+                <filter name="femmes" string="Femmes" domain="[('sexe', '=', 'F')]"/>
+                <separator/>
+                <!-- Tranches d'age (age est un champ stocke, donc filtrable) -->
+                <filter name="mineurs" string="Mineurs (&lt; 18 ans)"
+                        domain="[('age', '&lt;', 18), ('date_naissance', '!=', False)]"/>
+                <filter name="adultes" string="Adultes (18 - 59 ans)"
+                        domain="[('age', '&gt;=', 18), ('age', '&lt;', 60)]"/>
+                <filter name="seniors" string="Seniors (60 ans et +)"
+                        domain="[('age', '&gt;=', 60)]"/>
+                <separator/>
+                <!-- Corpulence (seuils OMS) - utile pour la couche IA -->
+                <filter name="surpoids" string="Surpoids (IMC 25 - 30)"
+                        domain="[('imc', '&gt;=', 25), ('imc', '&lt;', 30)]"/>
+                <filter name="obesite" string="Obesite (IMC &gt;= 30)"
+                        domain="[('imc', '&gt;=', 30)]"/>
+                <separator/>
+                <!-- Donnees manquantes pour la prediction IA -->
+                <filter name="donnees_incompletes" string="Donnees IA incompletes"
+                        help="Date de naissance, poids ou taille non renseignes"
+                        domain="['|', '|', ('date_naissance', '=', False), ('poids', 'in', [0, False]), ('taille', 'in', [0, False])]"/>
+
+                <group expand="0" string="Grouper par">
+                    <filter name="group_sexe" string="Sexe" context="{'group_by': 'sexe'}"/>
+                    <filter name="group_naissance" string="Annee de naissance"
+                            context="{'group_by': 'date_naissance:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_patient" model="ir.actions.act_window">
+        <field name="name">Patients</field>
+        <field name="res_model">syslab.patient</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree -->
+    <record id="view_analyse_tree" model="ir.ui.view">
+        <field name="name">syslab.analyse.tree</field>
+        <field name="model">syslab.analyse</field>
+        <field name="arch" type="xml">
+            <tree string="Catalogue des analyses">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="famille"/>
+                <field name="unite"/>
+                <field name="borne_min"/>
+                <field name="borne_max"/>
+                <field name="prix" sum="Total"/>
+                <field name="actif" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_analyse_form" model="ir.ui.view">
+        <field name="name">syslab.analyse.form</field>
+        <field name="model">syslab.analyse</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ex: Glycemie a jeun"/></h1>
+                    </div>
+                    <group>
+                        <group string="Identification">
+                            <field name="code"/>
+                            <field name="famille"/>
+                            <field name="actif"/>
+                        </group>
+                        <group string="Normes et tarif">
+                            <field name="unite"/>
+                            <label for="borne_min" string="Plage de reference"/>
+                            <div class="o_row">
+                                <field name="borne_min"/> <span>-</span> <field name="borne_max"/> <field name="unite" nolabel="1" readonly="1"/>
+                            </div>
+                            <field name="prix"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="view_analyse_search" model="ir.ui.view">
+        <field name="name">syslab.analyse.search</field>
+        <field name="model">syslab.analyse</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une analyse">
+                <!-- Recherche par nom OU par code dans le meme champ -->
+                <field name="name" string="Analyse"
+                       filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="code"/>
+                <field name="unite"/>
+
+                <!-- Disponibilite -->
+                <filter name="actif" string="Actives" domain="[('actif', '=', True)]"/>
+                <filter name="inactif" string="Inactives" domain="[('actif', '=', False)]"/>
+                <separator/>
+                <!-- Famille -->
+                <filter name="biochimie" string="Biochimie" domain="[('famille', '=', 'biochimie')]"/>
+                <filter name="hematologie" string="Hematologie" domain="[('famille', '=', 'hematologie')]"/>
+                <separator/>
+                <!-- Qualite du parametrage : sans plage, la couche 1 ne peut pas interpreter -->
+                <filter name="sans_norme" string="Sans plage de reference"
+                        domain="[('borne_min', 'in', [0, False]), ('borne_max', 'in', [0, False])]"/>
+
+                <group expand="0" string="Grouper par">
+                    <filter name="group_famille" string="Famille" context="{'group_by': 'famille'}"/>
+                    <filter name="group_unite" string="Unite" context="{'group_by': 'unite'}"/>
+                    <filter name="group_actif" string="Disponibilite" context="{'group_by': 'actif'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_analyse" model="ir.actions.act_window">
+        <field name="name">Catalogue d'analyses</field>
+        <field name="res_model">syslab.analyse</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_actif': 1, 'search_default_group_famille': 1}</field>
+    </record>
+
+</odoo>

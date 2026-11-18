@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action du rapport -->
+    <record id="action_report_bulletin" model="ir.actions.report">
+        <field name="name">Bulletin de resultats</field>
+        <field name="model">syslab.demande</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">syslab.report_bulletin</field>
+        <field name="report_file">syslab.report_bulletin</field>
+        <!-- Nom du fichier PDF (telechargement et piece jointe de l'email) -->
+        <field name="print_report_name">'Bulletin - %s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_syslab_demande"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Template du bulletin -->
+    <template id="report_bulletin">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-family: Arial, sans-serif; font-size: 13px; color: #2c3e50;">
+
+                        <!-- Titre -->
+                        <div style="text-align: center; margin-bottom: 25px; border-bottom: 3px solid #0d8f84; padding-bottom: 12px;">
+                            <h2 style="margin: 0; color: #0d8f84; letter-spacing: 1px;">BULLETIN DE RESULTATS</h2>
+                            <p style="margin: 4px 0 0; color: #7f8c8d;">Laboratoire d'analyses medicales SysLab</p>
+                        </div>
+
+                        <!-- Entete : Patient / Prescripteur -->
+                        <table style="width: 100%; margin-bottom: 20px;">
+                            <tr>
+                                <td style="width: 50%; vertical-align: top; padding: 10px; background: #f1f5f9; border-radius: 6px;">
+                                    <strong style="color: #0d8f84;">PATIENT</strong><br/>
+                                    <strong><t t-esc="doc.patient_id.name"/></strong><br/>
+                                    Sexe :
+                                    <t t-if="doc.patient_id.sexe == 'M'">Homme</t>
+                                    <t t-elif="doc.patient_id.sexe == 'F'">Femme</t>
+                                    <t t-else="">-</t><br/>
+                                    Age : <t t-esc="doc.patient_id.age"/> ans
+                                </td>
+                                <td style="width: 4%;"></td>
+                                <td style="width: 46%; vertical-align: top; padding: 10px; background: #f1f5f9; border-radius: 6px;">
+                                    <strong style="color: #0d8f84;">PRESCRIPTEUR</strong><br/>
+                                    <strong><t t-esc="doc.medecin_id.name or '-'"/></strong><br/>
+                                    <t t-esc="doc.medecin_id.specialite or ''"/><br/>
+                                    Reference : <strong><t t-esc="doc.name"/></strong><br/>
+                                    Date : <t t-esc="doc.date_demande" t-options='{"widget": "date"}'/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Tableau des resultats -->
+                        <table class="table table-sm" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #0d8f84; color: white;">
+                                    <th style="padding: 8px; text-align: left;">Analyse</th>
+                                    <th style="padding: 8px; text-align: right;">Resultat</th>
+                                    <th style="padding: 8px; text-align: center;">Unite</th>
+                                    <th style="padding: 8px; text-align: center;">Valeurs de reference</th>
+                                    <th style="padding: 8px; text-align: center;">Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.resultat_ids" t-as="line" style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 8px;"><t t-esc="line.analyse_id.name"/></td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold;"><t t-esc="'%.2f' % line.valeur"/></td>
+                                    <td style="padding: 8px; text-align: center;"><t t-esc="line.unite"/></td>
+                                    <td style="padding: 8px; text-align: center;">
+                                        <t t-esc="'%.2f' % line.borne_min"/> - <t t-esc="'%.2f' % line.borne_max"/>
+                                    </td>
+                                    <td style="padding: 8px; text-align: center;">
+                                        <t t-if="line.interpretation == 'eleve'">
+                                            <span style="color: #c0392b; font-weight: bold;">ELEVE</span>
+                                        </t>
+                                        <t t-elif="line.interpretation == 'bas'">
+                                            <span style="color: #e67e22; font-weight: bold;">BAS</span>
+                                        </t>
+                                        <t t-elif="line.interpretation == 'normal'">
+                                            <span style="color: #27ae60;">Normal</span>
+                                        </t>
+                                        <t t-else="">-</t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Commentaires d'interpretation -->
+                        <div style="margin-top: 20px;">
+                            <h4 style="color: #0d8f84; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Commentaires</h4>
+                            <ul style="font-size: 12px; line-height: 1.6;">
+                                <li t-foreach="doc.resultat_ids" t-as="line">
+                                    <strong><t t-esc="line.analyse_id.name"/> :</strong> <t t-esc="line.commentaire"/>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Couche 2 (IA) : uniquement si une estimation a ete calculee -->
+                        <div t-if="doc.risque_niveau" style="margin-top: 20px; page-break-inside: avoid;">
+                            <h4 style="color: #0d8f84; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                                Aide a la decision - Risque de diabete (IA)
+                            </h4>
+                            <t t-set="couleur_risque"
+                               t-value="{'faible': '#27ae60', 'modere': '#e67e22', 'eleve': '#c0392b'}.get(doc.risque_niveau, '#7f8c8d')"/>
+                            <table style="width: 100%; font-size: 12px;">
+                                <tr>
+                                    <td style="width: 35%; vertical-align: middle;">
+                                        Risque estime :
+                                        <strong t-attf-style="font-size: 16px; color: {{ couleur_risque }};">
+                                            <t t-esc="'%.1f' % doc.risque_diabete"/> %
+                                        </strong>
+                                        <br/>
+                                        Niveau :
+                                        <strong t-attf-style="color: {{ couleur_risque }};">
+                                            <t t-if="doc.risque_niveau == 'faible'">Faible</t>
+                                            <t t-elif="doc.risque_niveau == 'modere'">Modere</t>
+                                            <t t-else="">Eleve</t>
+                                        </strong>
+                                    </td>
+                                    <td style="width: 65%; vertical-align: middle;">
+                                        <!-- Jauge horizontale -->
+                                        <div style="background: #eef2f6; height: 12px; border-radius: 6px; width: 100%;">
+                                            <div t-attf-style="background: {{ couleur_risque }}; height: 12px; border-radius: 6px; width: {{ doc.risque_diabete }}%;"/>
+                                        </div>
+                                        <div style="color: #7f8c8d; font-size: 10px; margin-top: 4px;">
+                                            Donnees utilisees : glycemie <t t-esc="'%.0f' % doc.risque_glucose"/> mg/dL,
+                                            IMC <t t-esc="'%.1f' % doc.risque_imc"/>, age <t t-esc="doc.risque_age"/> ans.
+                                            Modele : Random Forest (dataset Pima Indians Diabetes).
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div style="margin-top: 8px; padding: 8px; background: #fdecea; border-left: 4px solid #c0392b; font-size: 11px;">
+                                <strong>Resultat indicatif, a valider par un professionnel.</strong>
+                                Cette estimation statistique ne constitue pas un diagnostic.
+                            </div>
+                        </div>
+
+                        <!-- Avertissement (ethique / cahier des charges) -->
+                        <div style="margin-top: 15px; padding: 10px; background: #fef9e7; border-left: 4px solid #f1c40f; font-size: 11px;">
+                            Les commentaires ci-dessus sont une aide a l'interpretation generee automatiquement a partir des valeurs de reference.
+                            Ils ne constituent pas un diagnostic. Seul le medecin prescripteur est habilite a poser un diagnostic.
+                        </div>
+
+                        <!-- Signature -->
+                        <div style="margin-top: 40px; text-align: right;">
+                            <p><strong>Le Biologiste</strong></p>
+                            <div style="border-top: 1px solid #2c3e50; width: 220px; margin-left: auto; padding-top: 5px; font-size: 11px;">
+                                Validation et signature
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

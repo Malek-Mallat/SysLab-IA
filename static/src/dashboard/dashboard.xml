@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Tableau de bord SysLab -->
+    <t t-name="syslab.Dashboard">
+        <div class="o_action o_syslab_dashboard h-100 overflow-auto">
+            <div class="container-fluid py-4 px-4">
+
+                <!-- En-tete -->
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div>
+                        <h2 class="mb-0 sl-title">Tableau de bord</h2>
+                        <div class="text-muted small">Activite du laboratoire d'analyses SysLab</div>
+                    </div>
+                    <button class="btn btn-light border" t-on-click="() => this.load()"
+                            t-att-disabled="state.loading">
+                        <i t-attf-class="fa fa-refresh me-1 {{ state.loading ? 'fa-spin' : '' }}"/>
+                        Actualiser
+                    </button>
+                </div>
+
+                <t t-if="state.data">
+                    <t t-set="k" t-value="state.data.kpi"/>
+
+                    <!-- Ligne 1 : KPI principaux -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-kpi" t-on-click="() => this.open('syslab.patient', 'Patients')">
+                                <div class="sl-kpi-icon sl-c-teal"><i class="fa fa-users"/></div>
+                                <div>
+                                    <div class="sl-kpi-value" t-esc="k.nb_patients"/>
+                                    <div class="sl-kpi-label">Patients</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-kpi" t-on-click="() => this.openDemandes('Demandes')">
+                                <div class="sl-kpi-icon sl-c-blue"><i class="fa fa-flask"/></div>
+                                <div>
+                                    <div class="sl-kpi-value" t-esc="k.nb_demandes"/>
+                                    <div class="sl-kpi-label">Demandes d'analyses</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-kpi"
+                                 t-on-click="() => this.openResultats('Resultats anormaux', [['interpretation', 'in', ['bas', 'eleve']]])">
+                                <div class="sl-kpi-icon sl-c-red"><i class="fa fa-exclamation-triangle"/></div>
+                                <div>
+                                    <div class="sl-kpi-value" t-esc="k.nb_anormaux"/>
+                                    <div class="sl-kpi-label">Resultats anormaux
+                                        <span class="text-muted">(<t t-esc="k.taux_anomalie"/> %)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-kpi"
+                                 t-on-click="() => this.openDemandes('Demandes validees et facturees', [['state', 'in', ['valide', 'facture']]])">
+                                <div class="sl-kpi-icon sl-c-green"><i class="fa fa-money"/></div>
+                                <div>
+                                    <div class="sl-kpi-value"><t t-esc="k.ca"/> <small class="sl-unit">TND</small></div>
+                                    <div class="sl-kpi-label">Chiffre d'affaires (valide)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ligne 2 : indicateurs secondaires -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-mini" t-on-click="() => this.open('syslab.medecin', 'Medecins')">
+                                <span class="text-muted"><i class="fa fa-user-md me-2"/>Medecins prescripteurs</span>
+                                <strong t-esc="k.nb_medecins"/>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-mini"
+                                 t-on-click="() => this.openDemandes('Demandes du mois', [['date_demande', '&gt;=', state.data.debut_mois]])">
+                                <span class="text-muted"><i class="fa fa-calendar me-2"/>Demandes ce mois-ci</span>
+                                <strong t-esc="k.nb_demandes_mois"/>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-mini"
+                                 t-on-click="() => this.openResultats('Resultats saisis', [['interpretation', '!=', 'nd']])">
+                                <span class="text-muted"><i class="fa fa-check-square-o me-2"/>Resultats saisis</span>
+                                <strong t-esc="k.nb_resultats"/>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sl-card sl-mini"
+                                 t-on-click="() => this.openDemandes('A facturer', [['state', '=', 'valide'], ['facture_id', '=', false]])">
+                                <span class="text-muted"><i class="fa fa-file-text-o me-2"/>Demandes a facturer</span>
+                                <strong t-att-class="k.nb_a_facturer ? 'text-warning' : ''" t-esc="k.nb_a_facturer"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ligne 3 : repartitions -->
+                    <div class="row g-3 mb-4">
+                        <!-- Demandes par statut -->
+                        <div class="col-lg-4">
+                            <div class="sl-card h-100">
+                                <h6 class="sl-card-title">Demandes par statut</h6>
+                                <t t-foreach="state.data.par_statut" t-as="s" t-key="s.key">
+                                    <div class="sl-bar-row"
+                                         t-on-click="() => this.openDemandes('Demandes : ' + s.label, [['state', '=', s.key]])">
+                                        <div class="d-flex justify-content-between small">
+                                            <span><span t-attf-class="sl-dot sl-state-{{ s.key }}"/><t t-esc="s.label"/></span>
+                                            <span><strong t-esc="s.count"/> <span class="text-muted">· <t t-esc="s.pct"/> %</span></span>
+                                        </div>
+                                        <div class="sl-bar"><div t-attf-class="sl-bar-fill sl-state-{{ s.key }}" t-attf-style="width: {{ s.pct }}%"/></div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Interpretation des resultats (couche 1) -->
+                        <div class="col-lg-4">
+                            <div class="sl-card h-100">
+                                <h6 class="sl-card-title">Interpretation des resultats</h6>
+                                <t t-foreach="state.data.par_interpretation" t-as="i" t-key="i.key">
+                                    <div class="sl-bar-row"
+                                         t-on-click="() => this.openResultats('Resultats : ' + i.label, [['interpretation', '=', i.key]])">
+                                        <div class="d-flex justify-content-between small">
+                                            <span><span t-attf-class="sl-dot sl-interp-{{ i.key }}"/><t t-esc="i.label"/></span>
+                                            <span><strong t-esc="i.count"/> <span class="text-muted">· <t t-esc="i.pct"/> %</span></span>
+                                        </div>
+                                        <div class="sl-bar"><div t-attf-class="sl-bar-fill sl-interp-{{ i.key }}" t-attf-style="width: {{ i.pct }}%"/></div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Repartition par famille -->
+                        <div class="col-lg-4">
+                            <div class="sl-card h-100">
+                                <h6 class="sl-card-title">Analyses par famille</h6>
+                                <t t-foreach="state.data.par_famille" t-as="f" t-key="f.key">
+                                    <div class="sl-bar-row"
+                                         t-on-click="() => this.openResultats('Famille : ' + f.label, [['famille', '=', f.key]])">
+                                        <div class="d-flex justify-content-between small">
+                                            <span><span t-attf-class="sl-dot sl-famille-{{ f.key }}"/><t t-esc="f.label"/></span>
+                                            <span><strong t-esc="f.count"/> <span class="text-muted">· <t t-esc="f.pct"/> %</span></span>
+                                        </div>
+                                        <div class="sl-bar"><div t-attf-class="sl-bar-fill sl-famille-{{ f.key }}" t-attf-style="width: {{ f.pct }}%"/></div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ligne 4 : dernieres demandes + top analyses -->
+                    <div class="row g-3">
+                        <div class="col-lg-8">
+                            <div class="sl-card h-100">
+                                <h6 class="sl-card-title">Dernieres demandes</h6>
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr class="text-muted small">
+                                            <th>Reference</th><th>Patient</th><th>Date</th>
+                                            <th class="text-center">Anomalies</th><th class="text-end">Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.data.dernieres" t-as="d" t-key="d.id"
+                                            class="sl-clickable" t-on-click="() => this.openDemande(d.id)">
+                                            <td class="fw-bold" t-esc="d.name"/>
+                                            <td t-esc="d.patient"/>
+                                            <td class="text-muted" t-esc="d.date"/>
+                                            <td class="text-center">
+                                                <span t-if="d.nb_anomalies" class="badge rounded-pill text-bg-danger" t-esc="d.nb_anomalies"/>
+                                                <span t-else="" class="text-muted">-</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-attf-class="badge sl-badge sl-state-{{ d.state }}" t-esc="d.state_label"/>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="!state.data.dernieres.length">
+                                            <td colspan="5" class="text-center text-muted py-3">Aucune demande pour le moment</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="sl-card h-100">
+                                <h6 class="sl-card-title">Analyses les plus demandees</h6>
+                                <t t-foreach="state.data.top_analyses" t-as="a" t-key="a.id">
+                                    <div class="sl-bar-row"
+                                         t-on-click="() => this.openResultats(a.name, [['analyse_id', '=', a.id]])">
+                                        <div class="d-flex justify-content-between small">
+                                            <span t-esc="a.name"/>
+                                            <strong t-esc="a.count"/>
+                                        </div>
+                                        <div class="sl-bar"><div class="sl-bar-fill sl-c-teal-bg" t-attf-style="width: {{ a.pct }}%"/></div>
+                                    </div>
+                                </t>
+                                <div t-if="!state.data.top_analyses.length" class="text-muted small">Aucun resultat saisi</div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- Chargement initial -->
+                <div t-if="!state.data" class="text-center text-muted py-5">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

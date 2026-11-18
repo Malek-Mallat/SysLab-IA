@@ -1,0 +1,12 @@
+// =============================================================================
+// SysLab - Couleur generale du backend : teal #0d8f84 au lieu du mauve Odoo.
+// Fichier ajoute EN TETE du bundle web._assets_primary_variables : les variables
+// d'Odoo sont declarees avec !default, nos valeurs definies avant sont donc gardees.
+// $o-brand-odoo (barre de menu) et $o-brand-primary (boutons, liens...) derivent
+// de $o-community-color ; on les fixe aussi explicitement par clarte.
+// =============================================================================
+$o-community-color: #0d8f84;
+$o-brand-odoo: #0d8f84;
+$o-brand-primary: #0d8f84;
+$o-navbar-background: #0d8f84;
+$o-navbar-border-bottom: 1px solid darken(#0d8f84, 8%);

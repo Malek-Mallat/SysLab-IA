@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Vues d'analyse des resultats (Reporting).
+        La saisie des resultats reste dans le formulaire de la demande :
+        ici on consulte et on analyse, sans creer ni modifier.
+    -->
+
+    <!-- Tree (consultation seule) -->
+    <record id="view_resultat_tree" model="ir.ui.view">
+        <field name="name">syslab.resultat.tree</field>
+        <field name="model">syslab.resultat</field>
+        <field name="arch" type="xml">
+            <tree string="Resultats d'analyses" create="0" edit="0" delete="0"
+                  decoration-danger="interpretation == 'eleve'"
+                  decoration-warning="interpretation == 'bas'">
+                <field name="date_demande"/>
+                <field name="demande_id"/>
+                <field name="patient_id"/>
+                <field name="analyse_id"/>
+                <field name="famille" optional="hide"/>
+                <field name="valeur"/>
+                <field name="unite"/>
+                <field name="interpretation" widget="badge"
+                       decoration-success="interpretation == 'normal'"
+                       decoration-danger="interpretation == 'eleve'"
+                       decoration-warning="interpretation == 'bas'"
+                       decoration-muted="interpretation == 'nd'"/>
+                <field name="commentaire" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form (consultation seule, la modification se fait depuis la demande) -->
+    <record id="view_resultat_form" model="ir.ui.view">
+        <field name="name">syslab.resultat.form</field>
+        <field name="model">syslab.resultat</field>
+        <field name="arch" type="xml">
+            <form string="Resultat d'analyse" create="0" edit="0" delete="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="analyse_id"/></h1>
+                    </div>
+                    <group>
+                        <group string="Contexte">
+                            <field name="demande_id"/>
+                            <field name="patient_id"/>
+                            <field name="medecin_id"/>
+                            <field name="date_demande"/>
+                        </group>
+                        <group string="Resultat">
+                            <field name="valeur"/>
+                            <field name="unite"/>
+                            <field name="borne_min"/>
+                            <field name="borne_max"/>
+                            <field name="interpretation" widget="badge"
+                                   decoration-success="interpretation == 'normal'"
+                                   decoration-danger="interpretation == 'eleve'"
+                                   decoration-warning="interpretation == 'bas'"
+                                   decoration-muted="interpretation == 'nd'"/>
+                        </group>
+                    </group>
+                    <field name="commentaire"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="view_resultat_search" model="ir.ui.view">
+        <field name="name">syslab.resultat.search</field>
+        <field name="model">syslab.resultat</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher un resultat">
+                <field name="analyse_id"/>
+                <field name="patient_id"/>
+                <field name="demande_id"/>
+                <field name="medecin_id"/>
+
+                <!-- Interpretation (couche 1) -->
+                <filter name="normal" string="Normal" domain="[('interpretation', '=', 'normal')]"/>
+                <filter name="bas" string="Bas" domain="[('interpretation', '=', 'bas')]"/>
+                <filter name="eleve" string="Eleve" domain="[('interpretation', '=', 'eleve')]"/>
+                <filter name="nd" string="Non saisi" domain="[('interpretation', '=', 'nd')]"/>
+                <separator/>
+                <filter name="anormaux" string="Anormaux (bas ou eleve)"
+                        domain="[('interpretation', 'in', ('bas', 'eleve'))]"/>
+                <separator/>
+                <filter name="biochimie" string="Biochimie" domain="[('famille', '=', 'biochimie')]"/>
+                <filter name="hematologie" string="Hematologie" domain="[('famille', '=', 'hematologie')]"/>
+                <separator/>
+                <filter name="filter_date_demande" string="Date de la demande" date="date_demande"/>
+
+                <group expand="0" string="Grouper par">
+                    <filter name="group_analyse" string="Analyse" context="{'group_by': 'analyse_id'}"/>
+                    <filter name="group_famille" string="Famille" context="{'group_by': 'famille'}"/>
+                    <filter name="group_interpretation" string="Interpretation"
+                            context="{'group_by': 'interpretation'}"/>
+                    <filter name="group_patient" string="Patient" context="{'group_by': 'patient_id'}"/>
+                    <filter name="group_medecin" string="Medecin" context="{'group_by': 'medecin_id'}"/>
+                    <filter name="group_mois" string="Mois" context="{'group_by': 'date_demande:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Graph : nombre de resultats par analyse, empiles par interpretation
+         (basculer en "Camembert" dans la vue pour la repartition globale) -->
+    <record id="view_resultat_graph" model="ir.ui.view">
+        <field name="name">syslab.resultat.graph</field>
+        <field name="model">syslab.resultat</field>
+        <field name="arch" type="xml">
+            <graph string="Resultats par analyse" type="bar" stacked="1" sample="1">
+                <field name="analyse_id"/>
+                <field name="interpretation"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot : analyses x interpretation (mesure par defaut = Nombre ;
+         "Valeur mesuree" (moyenne) disponible dans le menu Mesures) -->
+    <record id="view_resultat_pivot" model="ir.ui.view">
+        <field name="name">syslab.resultat.pivot</field>
+        <field name="model">syslab.resultat</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des resultats" sample="1">
+                <field name="analyse_id" type="row"/>
+                <field name="interpretation" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+
+</odoo>

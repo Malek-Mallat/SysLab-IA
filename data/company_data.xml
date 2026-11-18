@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Coordonnees du laboratoire, ecrites sur la societe principale (res.company).
+         Elles apparaissent dans l'en-tete et le pied de page du bulletin PDF.
+
+         Pourquoi <function> et pas <record id="base.main_company"> ?
+         base.main_company est un enregistrement "noupdate" du module base : Odoo ignore
+         un <record> sur cet identifiant lors d'un -u. Un appel a write() s'execute, lui,
+         a chaque installation ET mise a jour du module.
+         Consequence : ces valeurs sont reappliquees a chaque -u syslab
+         (modifiez-les ici plutot que dans l'interface).
+
+         Le logo est pose plus bas (seulement si c'est encore le logo par defaut d'Odoo). -->
+    <!-- En-tete et pied de page des PDF (bulletins, factures) :
+         - company_details vide => la mise en page d'Odoo affiche le nom et l'adresse
+           REELS de la societe (sinon elle affiche un texte fige "YourCompany / San Francisco"
+           enregistre a l'installation d'Odoo) ;
+         - report_footer = ligne de contact en bas de chaque page. -->
+    <!-- 'email' = adresse REELLE : expediteur des emails envoyes par Odoo
+         (meme compte Gmail que le serveur SMTP configure dans l'interface). -->
+    <function model="res.company" name="write">
+        <value eval="[ref('base.main_company')]"/>
+        <value eval="{
+            'name': 'Laboratoire SysLab',
+            'street': 'Avenue Habib Bourguiba',
+            'street2': 'Imm. El Manar',
+            'zip': '8000',
+            'city': 'Nabeul',
+            'country_id': ref('base.tn'),
+            'phone': '+216 72 234 567',
+            'mobile': '+216 55 123 456',
+            'email': 'malekmallat1920@gmail.com',
+            'website': 'https://www.syslab.tn',
+            'vat': '1678945/A/M/000',
+            'company_details': False,
+            'report_footer': '&lt;p&gt;Tel : +216 72 234 567 - Mobile : +216 55 123 456 - '
+                             'malekmallat1920@gmail.com - www.syslab.tn - '
+                             'Matricule fiscal : 1678945/A/M/000&lt;/p&gt;',
+        }"/>
+    </function>
+
+    <!-- Email du biologiste par defaut (destinataire des bulletins).
+         Rempli seulement s'il est vide : une valeur saisie dans
+         Configuration > Laboratoire n'est jamais ecrasee par un -u. -->
+    <function model="res.company" name="_syslab_init_email_biologiste">
+        <value eval="[ref('base.main_company')]"/>
+        <value>malekmallat1920@gmail.com</value>
+    </function>
+
+    <!-- Logo du laboratoire (static/img/syslab_logo.png), pose seulement si la societe
+         a encore le logo par defaut d'Odoo : un logo televerse a la main est conserve. -->
+    <function model="res.company" name="_syslab_init_logo">
+        <value eval="[ref('base.main_company')]"/>
+        <value type="base64" file="syslab/static/img/syslab_logo.png"/>
+    </function>
+
+    <!-- Aucun serveur SMTP ni mot de passe n'est defini dans ce module :
+         le serveur sortant Gmail se configure a la main (voir README). -->
+</odoo>

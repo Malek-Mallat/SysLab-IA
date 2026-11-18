@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_syslab_analyse,syslab.analyse,model_syslab_analyse,base.group_user,1,1,1,1
+access_syslab_patient,syslab.patient,model_syslab_patient,base.group_user,1,1,1,1
+access_syslab_medecin,syslab.medecin,model_syslab_medecin,base.group_user,1,1,1,1
+access_syslab_demande,syslab.demande,model_syslab_demande,base.group_user,1,1,1,1
+access_syslab_resultat,syslab.resultat,model_syslab_resultat,base.group_user,1,1,1,1

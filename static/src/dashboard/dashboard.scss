@@ -1,0 +1,110 @@
+// =====================================================================
+// Tableau de bord SysLab - palette sobre (ardoise + sarcelle du bulletin)
+// =====================================================================
+$sl-teal:   #0d8f84;  // couleur du bulletin PDF
+$sl-blue:   #3b6ea8;
+$sl-green:  #2e8b57;
+$sl-amber:  #d4a017;
+$sl-red:    #c0392b;
+$sl-slate:  #94a3b8;
+$sl-indigo: #5b5f97;
+
+.o_syslab_dashboard {
+    background-color: #f5f7fa;
+
+    .sl-title { font-weight: 600; color: #2c3e50; }
+
+    // Carte generique
+    .sl-card {
+        background: #fff;
+        border: 1px solid #e5e9f0;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .sl-card-title {
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        font-size: .75rem;
+        margin-bottom: 1rem;
+    }
+
+    // Cartes KPI principales
+    .sl-kpi {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        transition: box-shadow .15s ease, transform .15s ease;
+        &:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); transform: translateY(-1px); }
+    }
+    .sl-kpi-icon {
+        width: 48px; height: 48px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+    .sl-kpi-value { font-size: 1.6rem; font-weight: 700; color: #1e293b; line-height: 1.1; }
+    .sl-kpi-label { font-size: .85rem; color: #64748b; }
+    .sl-unit { font-size: .8rem; font-weight: 500; color: #64748b; }
+
+    // Pastilles d'icone (fond pale + icone coloree)
+    .sl-c-teal  { background: rgba($sl-teal, .12);  color: $sl-teal; }
+    .sl-c-blue  { background: rgba($sl-blue, .12);  color: $sl-blue; }
+    .sl-c-red   { background: rgba($sl-red, .12);   color: $sl-red; }
+    .sl-c-green { background: rgba($sl-green, .12); color: $sl-green; }
+    .sl-c-teal-bg { background: $sl-teal; }
+
+    // Indicateurs secondaires
+    .sl-mini {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: .75rem 1.25rem;
+        cursor: pointer;
+        strong { font-size: 1.15rem; color: #1e293b; }
+        &:hover { border-color: $sl-teal; }
+    }
+
+    // Barres de repartition
+    .sl-bar-row {
+        margin-bottom: .85rem;
+        cursor: pointer;
+        &:hover span { color: $sl-teal; }
+    }
+    .sl-bar {
+        height: 8px;
+        background: #eef2f6;
+        border-radius: 4px;
+        margin-top: .3rem;
+        overflow: hidden;
+    }
+    .sl-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+    .sl-dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-right: .5rem;
+    }
+
+    // Couleurs par statut de demande
+    .sl-state-brouillon { background: $sl-slate; }
+    .sl-state-en_cours  { background: $sl-amber; }
+    .sl-state-valide    { background: $sl-green; }
+    .sl-state-facture   { background: $sl-blue; }
+
+    // Couleurs par interpretation (vert / orange / rouge / gris)
+    .sl-interp-normal { background: $sl-green; }
+    .sl-interp-bas    { background: $sl-amber; }
+    .sl-interp-eleve  { background: $sl-red; }
+    .sl-interp-nd     { background: $sl-slate; }
+
+    // Couleurs par famille
+    .sl-famille-biochimie   { background: $sl-teal; }
+    .sl-famille-hematologie { background: $sl-indigo; }
+
+    // Badges de statut dans le tableau
+    .sl-badge { color: #fff; font-weight: 500; }
+    .sl-clickable { cursor: pointer; }
+}
